@@ -59,12 +59,12 @@
             vertical-align: middle;
             border-radius: 3px;
         }
-        .legend-color.store      { background: #FF6347; } /* Red-Orange */
-        .legend-color.station    { background: #1E90FF; } /* Blue */
-        .legend-color.billboard { background: #32CD32; } /* Green */
+        .legend-color.store      { background: #FF6347; }
+        .legend-color.station    { background: #1E90FF; }
+        .legend-color.billboard { background: #32CD32; }
     </style>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlgV94Xs1mTP01IZo3wqQWpx9png3l4DE&libraries=geometry"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlgV94Xs1mTP01IZo3wqQWpx9png3l4DE&libraries=geometry" async defer></script>
 </head>
 <body>
     <div id="controls">
@@ -99,15 +99,16 @@
         const storeMarkers       = [];
         const stationMarkers     = [];
         const billboardMarkers   = [];
-        const stationData        = [];
-        const billboardData      = [];
         let highlightedMarker    = null;
         let circles = [];
+        let storeData = [];
+        let stationData = [];
+        let billboardData = [];
 
         const COLORS = {
-            "Store":       "#FF6347", // Red-Orange
-            "Station":     "#1E90FF", // Blue
-            "Billboard": "#32CD32"  // Green
+            "Store": "#FF6347",
+            "Station": "#1E90FF",
+            "Billboard": "#32CD32"
         };
 
         function makeHighlightIcon() {
@@ -132,69 +133,44 @@
 
             const infoWindow = new google.maps.InfoWindow();
 
-            // Define URLs for the data sources
-            const radioDataURL = 'https://jzantow.github.io/radio-coverage/locations.json';
-            const billboardDataURL = 'https://jzantow.github.io/radio-coverage/billboards.json';
+            const storeDataURL = 'https://jzantow.github.io/vroom/stores.json';
+            const stationDataURL = 'https://jzantow.github.io/vroom/stations.json';
+            const billboardDataURL = 'https://jzantow.github.io/vroom/hqbillboards.json';
 
-            // Fetch both JSON files at the same time
             Promise.all([
-                fetch(radioDataURL).then(res => res.json()),
+                fetch(storeDataURL).then(res => res.json()),
+                fetch(stationDataURL).then(res => res.json()),
                 fetch(billboardDataURL).then(res => res.json())
-            ]).then(([radioLocations, billboardLocations]) => {
-                // --- Process and Combine Data ---
-                const uniqueStores = new Map();
-
-                // Process radio data for stations and stores
-                radioLocations.forEach(loc => {
-                    if (loc.Type === "Station") {
-                        stationData.push(loc);
-                    } else if (loc.Type === "Store") {
-                        uniqueStores.set(loc.Name, loc); // Use name as a key to prevent duplicates
-                    }
-                });
-
-                // Process billboard data for billboards and stores
-                billboardLocations.forEach(loc => {
-                    if (loc.Type === "Billboard") {
-                        billboardData.push(loc);
-                    } else if (loc.Type === "Store") {
-                        uniqueStores.set(loc.Name, loc);
-                    }
-                });
-
-                const allStores = Array.from(uniqueStores.values());
-                
-                // --- Create Markers for Each Type ---
-                createMarkers(allStores);
+            ]).then(([storeLocations, stationLocations, billboardLocations]) => {
+                storeData = storeLocations;
+                stationData = stationLocations;
+                billboardData = billboardLocations;
+            
+                createMarkers(storeData);
                 createMarkers(stationData);
                 createMarkers(billboardData);
 
-                // Set up the initial state of the markers and filter listeners
                 updateMarkers();
                 document.getElementById('storesCheckbox').addEventListener('change', updateMarkers);
                 document.getElementById('stationsCheckbox').addEventListener('change', updateMarkers);
                 document.getElementById('billboardsCheckbox').addEventListener('change', updateMarkers);
-
             }).catch(err => console.error("Failed to load location data:", err));
 
-            // --- Universal Marker Creation Function ---
             function createMarkers(locations) {
                 locations.forEach(loc => {
                     const position = { lat: loc.Latitude, lng: loc.Longitude };
                     const color = COLORS[loc.Type] || "#000";
-
-                    // Draw coverage circles for stations and billboards
+                    
                     if (loc.Type === "Station" || loc.Type === "Billboard") {
                         const circle = new google.maps.Circle({
                             strokeColor: color, strokeOpacity: 0.8, strokeWeight: 2,
                             fillColor: color, fillOpacity: 0.25,
                             center: position,
-                            radius: (loc.Radius || 0) * 1609.34, // Convert miles to meters
+                            radius: (loc.Radius || 0) * 1609.34,
                             map: map, clickable: false
                         });
                         circles.push(circle);
                     }
-
                     const defaultIcon = {
                         path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color,
                         fillOpacity: 1, strokeWeight: 1, strokeColor: "#fff"
@@ -205,36 +181,34 @@
                         title: String(loc.Name), icon: defaultIcon
                     });
                     marker.defaultIcon = defaultIcon;
-
-                    // Add appropriate click listener based on type
                     if (loc.Type === "Store") {
-                        addStoreClickListener(marker, loc);
+                        addStoreClickListener(marker, loc, infoWindow, map, stationData, billboardData); // 🚩 Updated
                         storeMarkers.push(marker);
                     } else if (loc.Type === "Station") {
-                        addStationClickListener(marker, loc);
+                        addStationClickListener(marker, loc, infoWindow, map); // 🚩 Updated
                         stationMarkers.push(marker);
                     } else if (loc.Type === "Billboard") {
-                        addBillboardClickListener(marker, loc);
+                        addBillboardClickListener(marker, loc, infoWindow, map); // 🚩 Updated
                         billboardMarkers.push(marker);
                     }
                 });
             }
 
             // --- Click Listener for STORES ---
-            function addStoreClickListener(marker, loc) {
+            function addStoreClickListener(marker, loc, infoWindow, map, stationData, billboardData) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
                     const storeLatLng = marker.getPosition();
 
-                    const inRangeStations = stationData.map(st => {
+                    const inRangeStations = stationData.filter(st => {
                         const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
-                        return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34 ? st.Name : null;
-                    }).filter(name => name);
+                        return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
+                    }).map(st => st.Name);
                     
-                    const inRangeBillboards = billboardData.map(bb => {
+                    const inRangeBillboards = billboardData.filter(bb => {
                         const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
-                        return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34 ? `ON #${bb.Name}` : null;
-                    }).filter(name => name);
+                        return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
+                    }).map(bb => `ON #${bb.Name}`);
 
                     const content = `
                         <strong>${loc.Name}</strong><br><br>
@@ -248,9 +222,9 @@
                     infoWindow.open(map, marker);
                 });
             }
-            
+
             // --- Click Listener for STATIONS ---
-            function addStationClickListener(marker, loc) {
+            function addStationClickListener(marker, loc, infoWindow, map) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
                     infoWindow.setContent(`<strong>${loc.Name}</strong>`);
@@ -259,7 +233,7 @@
             }
 
             // --- Click Listener for BILLBOARDS (from your file) ---
-            function addBillboardClickListener(marker, loc) {
+            function addBillboardClickListener(marker, loc, infoWindow, map) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
                     const content = `
@@ -292,18 +266,9 @@
                 const showStations = document.getElementById('stationsCheckbox').checked;
                 const showBillboards = document.getElementById('billboardsCheckbox').checked;
 
-                // Toggle visibility of markers
-                storeMarkers.forEach(marker => {
-                    marker.setMap(showStores ? map : null);
-                });
-
-                stationMarkers.forEach(marker => {
-                    marker.setMap(showStations ? map : null);
-                });
-
-                billboardMarkers.forEach(marker => {
-                    marker.setMap(showBillboards ? map : null);
-                });
+                storeMarkers.forEach(marker => marker.setMap(showStores ? map : null));
+                stationMarkers.forEach(marker => marker.setMap(showStations ? map : null));
+                billboardMarkers.forEach(marker => marker.setMap(showBillboards ? map : null));
             }
             
             // Reusable search function
@@ -320,10 +285,8 @@
                 }
             }
 
-            // --- Search Event Listeners ---
             document.getElementById("storeSearchBtn").addEventListener("click", () => {
                 const query = document.getElementById("storeSearchBox").value.trim().toLowerCase();
-                // Custom store search to handle "#" prefixes
                 const match = storeMarkers.find(m => {
                     const title = m.getTitle().toLowerCase();
                     const numMatch = title.match(/#?(\d+)/);
@@ -332,16 +295,17 @@
                 if (match) { map.setCenter(match.getPosition()); map.setZoom(10); google.maps.event.trigger(match, "click"); }
                 else { alert("No matching store found."); }
             });
+
             document.getElementById("stationSearchBtn").addEventListener("click", () => {
                 const query = document.getElementById("stationSearchBox").value.trim().toLowerCase();
                 performSearch(query, stationMarkers, "No matching station found.");
             });
+
             document.getElementById("billboardSearchBtn").addEventListener("click", () => {
                 const query = document.getElementById("billboardSearchBox").value.trim().toLowerCase();
                 performSearch(query, billboardMarkers, "No matching billboard found.");
             });
 
-            // --- Reset Button ---
             document.getElementById("resetBtn").addEventListener("click", () => {
                 document.getElementById("storeSearchBox").value = "";
                 document.getElementById("stationSearchBox").value = "";
