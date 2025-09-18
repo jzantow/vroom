@@ -233,25 +233,27 @@
             }
 
 // --- Click Listener for BILLBOARDS (from your file) ---
-            function addBillboardClickListener(marker, loc, infoWindow, map) {
-                marker.addListener("click", () => {
-                    highlightMarker(marker);
-                    const content = `
-                        <strong>ON #${loc.Name}</strong><br>
-                        <b>Latitude, Longitude:</b> ${loc.Latitude}, ${loc.Longitude}<br> 
-                        <b>Board Type:</b> ${loc["Board Type"] || "N/A"}<br>
-                        <b>Location:</b> ${loc.Info || "N/A"}<br>
-                        <b>Live Dates:</b><br>${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}<br>
-                        <b>Buyer:</b> ${loc["Buyer"] || "N/A"}<br>
-                        <b>Associated Store(s):</b> ${loc["Associated Store(s)"] || "N/A"}<br>
-                        <b>Directional:</b> ${loc["Directional"] || "N/A"}<br>
-                        <b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}<br>
-                        ${loc["POP Photo"] ? `<b>POP Photo:</b> <a href="${loc["POP Photo"]}" target="_blank">View</a>` : ""}
-                    `;
-                    infoWindow.setContent(content);
-                    infoWindow.open(map, marker);
-                });
-            }
+function addBillboardClickListener(marker, loc, infoWindow, map) {
+    marker.addListener("click", () => {
+        highlightMarker(marker);
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.Latitude},${loc.Longitude}`;
+        
+        const content = `
+            <strong>ON #${loc.Name}</strong><br>
+            <b>Latitude, Longitude:</b> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br> 
+            <b>Board Type:</b> ${loc["Board Type"] || "N/A"}<br>
+            <b>Location:</b> ${loc.Info || "N/A"}<br>
+            <b>Live Dates:</b><br>${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}<br>
+            <b>Buyer:</b> ${loc["Buyer"] || "N/A"}<br>
+            <b>Associated Store(s):</b> ${loc["Associated Store(s)"] || "N/A"}<br>
+            <b>Directional:</b> ${loc["Directional"] || "N/A"}<br>
+            <b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}<br>
+            ${loc["POP Photo"] ? `<b>POP Photo:</b> <a href="${loc["POP Photo"]}" target="_blank">View</a>` : ""}
+        `;
+        infoWindow.setContent(content);
+        infoWindow.open(map, marker);
+    });
+}
 
             function highlightMarker(marker) {
                 if (highlightedMarker && highlightedMarker !== marker) {
