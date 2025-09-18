@@ -223,11 +223,20 @@
                 });
             }
 
-            // --- Click Listener for STATIONS ---
+// --- Click Listener for STATIONS ---
             function addStationClickListener(marker, loc, infoWindow, map) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
-                    infoWindow.setContent(`<strong>${loc.Name}</strong>`);
+                    
+                    // Create the content with a clickable link if the Coverage Map data exists
+                    let content = `<strong>${loc.Name}</strong><br>`;
+                    if (loc["Coverage Map"]) {
+                        content += `<b>Coverage Map:</b> <a href="${loc["Coverage Map"]}" target="_blank">View Map</a>`;
+                    } else {
+                        content += `<b>Coverage Map:</b> N/A`;
+                    }
+
+                    infoWindow.setContent(content);
                     infoWindow.open(map, marker);
                 });
             }
