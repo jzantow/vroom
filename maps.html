@@ -232,12 +232,13 @@
                 });
             }
 
-            // --- Click Listener for BILLBOARDS (from your file) ---
+// --- Click Listener for BILLBOARDS (from your file) ---
             function addBillboardClickListener(marker, loc, infoWindow, map) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
                     const content = `
                         <strong>ON #${loc.Name}</strong><br>
+                        <b>Latitude, Longitude:</b> ${loc.Latitude}, ${loc.Longitude}<br> 
                         <b>Board Type:</b> ${loc["Board Type"] || "N/A"}<br>
                         <b>Location:</b> ${loc.Info || "N/A"}<br>
                         <b>Live Dates:</b><br>${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}<br>
