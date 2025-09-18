@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Coverage Data Table</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .info-cell {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8 min-h-screen">
+
+    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-xl">
+        <h1 class="text-3xl font-bold text-gray-900 mb-4 text-center">Combined Coverage Data</h1>
+        <p class="text-gray-600 text-center mb-6">Search for stores, stations, or billboards by name or number.</p>
+
+        <input type="text" id="searchInput" placeholder="Search by Store Name, Store #, ON #, or Station Call Sign..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out mb-6">
+        
+        <div class="overflow-x-auto rounded-lg shadow">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store Information</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stations in Range</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Billboards in Range</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Table rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <p id="loadingMessage" class="text-center text-gray-500 mt-4">Loading data...</p>
+        <p id="noResultsMessage" class="text-center text-gray-500 mt-4 hidden">No results found.</p>
+    </div>
+
+    <script>
+        const storeDataURL = 'https://jzantow.github.io/vroom/stores.json';
+        const stationDataURL = 'https://jzantow.github.io/vroom/stations.json';
+        const billboardDataURL = 'https://jzantow.github.io/vroom/hqbillboards.json';
+
+        let allStores = [];
+        let allStations = [];
+        let allBillboards = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            Promise.all([
+                fetch(storeDataURL).then(res => res.json()),
+                fetch(stationDataURL).then(res => res.json()),
+                fetch(billboardDataURL).then(res => res.json())
+            ]).then(([storeLocations, stationLocations, billboardLocations]) => {
+                allStores = storeLocations;
+                allStations = stationLocations;
+                allBillboards = billboardLocations;
+                renderTable(allStores);
+                document.getElementById('loadingMessage').classList.add('hidden');
+            }).catch(err => {
+                console.error("Failed to load location data:", err);
+                document.getElementById('loadingMessage').textContent = "Failed to load data. Please check file paths.";
+            });
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                filterTable(query);
+            });
+        });
+
+        function renderTable(stores) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            if (stores.length === 0) {
+                document.getElementById('noResultsMessage').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('noResultsMessage').classList.add('hidden');
+
+            stores.forEach(store => {
+                const inRangeStations = allStations.filter(st => {
+                    const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
+                    const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
+                });
+                
+                const inRangeBillboards = allBillboards.filter(bb => {
+                    const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
+                    const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
+                });
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        <strong class="font-semibold">${store.Name || 'N/A'}</strong><br>
+                        ${store.Info ? `<span class="text-gray-500 info-cell">${store.Info.replace(/\n/g, '<br>')}</span>` : ''}
+                    </td>
+                    <td class="px-6 py-4 info-cell text-sm text-gray-500">
+                        ${inRangeStations.length ? inRangeStations.map(st => `
+                            <ul class="list-disc list-inside">
+                                <li>${st.Name || 'N/A'}</li>
+                                <li>${st.Info || 'N/A'}</li>
+                                ${st['Coverage Map'] ? `<li><a href="${st['Coverage Map']}" target="_blank" class="text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out">View Map</a></li>` : ''}
+                            </ul>
+                        `).join('') : 'None'}
+                    </td>
+                    <td class="px-6 py-4 info-cell text-sm text-gray-500">
+                        ${inRangeBillboards.length ? inRangeBillboards.map(bb => `
+                            <ul class="list-disc list-inside">
+                                <li>ON #: ${bb.Name || 'N/A'}</li>
+                                <li>Location: ${bb.Info || 'N/A'}</li>
+                                <li>Lat, Lng: ${bb.Latitude}, ${bb.Longitude}</li>
+                                <li>Board Type: ${bb['Board Type'] || 'N/A'}</li>
+                                <li>Live Dates: ${bb['Live Dates'] ? bb['Live Dates'].replace(/\n/g, ', ') : 'N/A'}</li>
+                                <li>Buyer: ${bb.Buyer || 'N/A'}</li>
+                                <li>Associated Store(s): ${bb['Associated Store(s)'] || 'N/A'}</li>
+                                <li>Directional: ${bb['Directional'] || 'N/A'}</li>
+                                ${bb.Creative ? `<li>Creative: <a href="${bb.Creative}" target="_blank" class="text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out">View</a></li>` : ''}
+                                ${bb['POP Photo'] ? `<li>POP Photo: <a href="${bb['POP Photo']}" target="_blank" class="text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out">View</a></li>` : ''}
+                            </ul>
+                        `).join('<hr class="my-2 border-gray-200">') : 'None'}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function filterTable(query) {
+            const filteredStores = allStores.filter(store => {
+                const storeInfo = (store.Name || '').toLowerCase() + (store.Info || '').toLowerCase();
+                if (storeInfo.includes(query)) return true;
+
+                const inRangeStations = allStations.filter(st => {
+                    const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
+                    const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
+                });
+
+                const stationMatch = inRangeStations.some(st => (st.Name || '').toLowerCase().includes(query) || (st.Info || '').toLowerCase().includes(query));
+                if (stationMatch) return true;
+
+                const inRangeBillboards = allBillboards.filter(bb => {
+                    const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
+                    const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
+                });
+
+                const billboardMatch = inRangeBillboards.some(bb => (`ON #${bb.Name}` || '').toLowerCase().includes(query) || (bb['Board Type'] || '').toLowerCase().includes(query) || (bb.Buyer || '').toLowerCase().includes(query));
+                if (billboardMatch) return true;
+                
+                return false;
+            });
+
+            renderTable(filteredStores);
+        }
+
+        // A small library to make google maps objects available globally, which is needed for the table
+        // This is a minimal version of the Google Maps API, so we load the full one with async defer
+        window.google = window.google || {};
+        window.google.maps = window.google.maps || {};
+        window.google.maps.geometry = window.google.maps.geometry || {};
+        window.google.maps.geometry.spherical = window.google.maps.geometry.spherical || {};
+        window.google.maps.LatLng = window.google.maps.LatLng || function(lat, lng) {
+            this.lat = () => lat;
+            this.lng = () => lng;
+        };
+        window.google.maps.geometry.spherical.computeDistanceBetween = window.google.maps.geometry.spherical.computeDistanceBetween || function(from, to) {
+            const R = 6371e3; // Earth's radius in meters
+            const lat1 = from.lat() * Math.PI / 180;
+            const lat2 = to.lat() * Math.PI / 180;
+            const deltaLat = (to.lat() - from.lat()) * Math.PI / 180;
+            const deltaLon = (to.lng() - from.lng()) * Math.PI / 180;
+            const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                      Math.cos(lat1) * Math.cos(lat2) *
+                      Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        };
+    </script>
+</body>
+</html>
