@@ -182,13 +182,13 @@
                     });
                     marker.defaultIcon = defaultIcon;
                     if (loc.Type === "Store") {
-                        addStoreClickListener(marker, loc, infoWindow, map, stationData, billboardData); // 🚩 Updated
+                        addStoreClickListener(marker, loc, infoWindow, map, stationData, billboardData);
                         storeMarkers.push(marker);
                     } else if (loc.Type === "Station") {
-                        addStationClickListener(marker, loc, infoWindow, map); // 🚩 Updated
+                        addStationClickListener(marker, loc, infoWindow, map);
                         stationMarkers.push(marker);
                     } else if (loc.Type === "Billboard") {
-                        addBillboardClickListener(marker, loc, infoWindow, map); // 🚩 Updated
+                        addBillboardClickListener(marker, loc, infoWindow, map);
                         billboardMarkers.push(marker);
                     }
                 });
@@ -232,28 +232,28 @@
                 });
             }
 
-// --- Click Listener for BILLBOARDS (from your file) ---
-function addBillboardClickListener(marker, loc, infoWindow, map) {
-    marker.addListener("click", () => {
-        highlightMarker(marker);
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.Latitude},${loc.Longitude}`;
-        
-        const content = `
-            <strong>ON #${loc.Name}</strong><br>
-            <b>Latitude, Longitude:</b> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br> 
-            <b>Board Type:</b> ${loc["Board Type"] || "N/A"}<br>
-            <b>Location:</b> ${loc.Info || "N/A"}<br>
-            <b>Live Dates:</b><br>${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}<br>
-            <b>Buyer:</b> ${loc["Buyer"] || "N/A"}<br>
-            <b>Associated Store(s):</b> ${loc["Associated Store(s)"] || "N/A"}<br>
-            <b>Directional:</b> ${loc["Directional"] || "N/A"}<br>
-            <b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}<br>
-            ${loc["POP Photo"] ? `<b>POP Photo:</b> <a href="${loc["POP Photo"]}" target="_blank">View</a>` : ""}
-        `;
-        infoWindow.setContent(content);
-        infoWindow.open(map, marker);
-    });
-}
+            // --- Click Listener for BILLBOARDS (from your file) ---
+            function addBillboardClickListener(marker, loc, infoWindow, map) {
+                marker.addListener("click", () => {
+                    highlightMarker(marker);
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.Latitude},${loc.Longitude}`;
+                    
+                    const content = `
+                        <strong>ON #${loc.Name}</strong><br>
+                        <b>Latitude, Longitude:</b> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br>
+                        <b>Board Type:</b> ${loc["Board Type"] || "N/A"}<br>
+                        <b>Location:</b> ${loc.Info || "N/A"}<br>
+                        <b>Live Dates:</b><br>${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}<br>
+                        <b>Buyer:</b> ${loc["Buyer"] || "N/A"}<br>
+                        <b>Associated Store(s):</b> ${loc["Associated Store(s)"] || "N/A"}<br>
+                        <b>Directional:</b> ${loc["Directional"] || "N/A"}<br>
+                        <b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}<br>
+                        ${loc["POP Photo"] ? `<b>POP Photo:</b> <a href="${loc["POP Photo"]}" target="_blank">View</a>` : ""}
+                    `;
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            }
 
             function highlightMarker(marker) {
                 if (highlightedMarker && highlightedMarker !== marker) {
@@ -264,19 +264,28 @@ function addBillboardClickListener(marker, loc, infoWindow, map) {
             }
 
             // --- Filter Function ---
-function updateMarkers() {
-    const showStores = document.getElementById('storesCheckbox').checked;
-    const showStations = document.getElementById('stationsCheckbox').checked;
-    const showBillboards = document.getElementById('billboardsCheckbox').checked;
+            function updateMarkers() {
+                const showStores = document.getElementById('storesCheckbox').checked;
+                const showStations = document.getElementById('stationsCheckbox').checked;
+                const showBillboards = document.getElementById('billboardsCheckbox').checked;
 
-    // Toggle visibility of markers
-    storeMarkers.forEach(marker => marker.setMap(showStores ? map : null));
-    stationMarkers.forEach(marker => marker.setMap(showStations ? map : null));
-    billboardMarkers.forEach(marker => marker.setMap(showBillboards ? map : null));
+                storeMarkers.forEach(marker => marker.setMap(showStores ? map : null));
+                stationMarkers.forEach(marker => marker.setMap(showStations ? map : null));
+                billboardMarkers.forEach(marker => marker.setMap(showBillboards ? map : null));
+                
+                // 🚩 Here is the new logic to hide/show circles
+                circles.forEach(circle => {
+                    // This is checking if the station checkbox is checked, and applying the circle if it is
+                    const isStation = (circle.fillColor === COLORS.Station);
+                    const isBillboard = (circle.fillColor === COLORS.Billboard);
 
-    // Toggle visibility of circles based on the Stations checkbox
-    circles.forEach(circle => {
-        circle.setMap(showStations ? map : null);
+                    if (isStation) {
+                        circle.setMap(showStations ? map : null);
+                    }
+                    if (isBillboard) {
+                        circle.setMap(showBillboards ? map : null);
+                    }
+                });
             }
             
             // Reusable search function
@@ -327,16 +336,6 @@ function updateMarkers() {
                 infoWindow.close();
             });
         }
-
-// A new global array to hold the circles
-let circles = [];
-
-// Inside your createMarkers function, when you create a circle:
-const circle = new google.maps.Circle({
-    // ... circle properties
-    map: map
-});
-circles.push(circle); // Store the circle object in the array
 
         window.onload = initMap;
     </script>
