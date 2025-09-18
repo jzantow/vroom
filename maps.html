@@ -194,22 +194,29 @@
                 });
             }
 
-            // --- Click Listener for STORES ---
+// --- Click Listener for STORES ---
             function addStoreClickListener(marker, loc, infoWindow, map, stationData, billboardData) {
                 marker.addListener("click", () => {
                     highlightMarker(marker);
                     const storeLatLng = marker.getPosition();
 
+                    // Map stations in range and create links for their coverage maps
                     const inRangeStations = stationData.filter(st => {
                         const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
                         return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
-                    }).map(st => st.Name);
+                    }).map(st => {
+                        return st["Coverage Map"] ? `<a href="${st["Coverage Map"]}" target="_blank">${st.Name}</a>` : st.Name;
+                    });
                     
+                    // Map billboards in range and create links for their creative folders
                     const inRangeBillboards = billboardData.filter(bb => {
                         const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
                         return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
-                    }).map(bb => `ON #${bb.Name}`);
+                    }).map(bb => {
+                        return bb.Creative ? `<a href="${bb.Creative}" target="_blank">ON #${bb.Name}</a>` : `ON #${bb.Name}`;
+                    });
 
+                    // Build the info window content string
                     const content = `
                         <strong>${loc.Name}</strong><br><br>
                         <b>Stations In Range:</b><br>
