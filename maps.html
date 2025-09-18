@@ -264,14 +264,19 @@ function addBillboardClickListener(marker, loc, infoWindow, map) {
             }
 
             // --- Filter Function ---
-            function updateMarkers() {
-                const showStores = document.getElementById('storesCheckbox').checked;
-                const showStations = document.getElementById('stationsCheckbox').checked;
-                const showBillboards = document.getElementById('billboardsCheckbox').checked;
+function updateMarkers() {
+    const showStores = document.getElementById('storesCheckbox').checked;
+    const showStations = document.getElementById('stationsCheckbox').checked;
+    const showBillboards = document.getElementById('billboardsCheckbox').checked;
 
-                storeMarkers.forEach(marker => marker.setMap(showStores ? map : null));
-                stationMarkers.forEach(marker => marker.setMap(showStations ? map : null));
-                billboardMarkers.forEach(marker => marker.setMap(showBillboards ? map : null));
+    // Toggle visibility of markers
+    storeMarkers.forEach(marker => marker.setMap(showStores ? map : null));
+    stationMarkers.forEach(marker => marker.setMap(showStations ? map : null));
+    billboardMarkers.forEach(marker => marker.setMap(showBillboards ? map : null));
+
+    // Toggle visibility of circles based on the Stations checkbox
+    circles.forEach(circle => {
+        circle.setMap(showStations ? map : null);
             }
             
             // Reusable search function
@@ -322,6 +327,16 @@ function addBillboardClickListener(marker, loc, infoWindow, map) {
                 infoWindow.close();
             });
         }
+
+// A new global array to hold the circles
+let circles = [];
+
+// Inside your createMarkers function, when you create a circle:
+const circle = new google.maps.Circle({
+    // ... circle properties
+    map: map
+});
+circles.push(circle); // Store the circle object in the array
 
         window.onload = initMap;
     </script>
