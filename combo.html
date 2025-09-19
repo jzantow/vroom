@@ -234,9 +234,36 @@ function loadData() {
 
 // --- CORE FILTERING & RENDERING ---
 function masterFilter() {
-    const query = document.getElementById('masterSearchInput').value.toLowerCase();
+    const query = document.getElementById('masterSearchInput').value.trim().toLowerCase();
     const checkedStoreNames = Array.from(document.querySelectorAll('#storeCheckboxes input:checked')).map(cb => cb.value);
 
+    // --- NEW LOGIC: Check for a specific store search first ---
+    if (query) {
+        // Find all stores whose names include the search term
+        const potentialMatches = allStores.filter(store => store.Name.toLowerCase().includes(query));
+
+        // If we find EXACTLY ONE match, we will highlight it instead of filtering.
+        if (potentialMatches.length === 1) {
+            const matchedStoreName = potentialMatches[0].Name;
+            
+            // First, ensure the table and map are showing ALL stores (or all filtered by dropdown)
+            let storesToDisplay = (checkedStoreNames.length > 0) 
+                ? allStores.filter(store => checkedStoreNames.includes(store.Name))
+                : allStores;
+
+            renderTable(storesToDisplay); 
+            if (mapInitialized) {
+                updateVisibleMarkers(storesToDisplay); // Make sure all relevant markers are visible
+            }
+            
+            // Now, trigger the highlight and pan-to-map functionality for the specific store
+            handleTableRowClick(matchedStoreName);
+            
+            return; // Exit the function to prevent the normal filtering below
+        }
+    }
+    
+    // --- ORIGINAL FILTERING LOGIC (This runs for broad searches or empty search box) ---
     let storesToDisplay = (checkedStoreNames.length > 0) 
         ? allStores.filter(store => checkedStoreNames.includes(store.Name))
         : allStores;
@@ -253,7 +280,9 @@ function masterFilter() {
     }
 
     renderTable(storesToDisplay);
-    if (mapInitialized) updateVisibleMarkers(storesToDisplay);
+    if (mapInitialized) {
+        updateVisibleMarkers(storesToDisplay);
+    }
 }
 
 function renderTable(stores) {
