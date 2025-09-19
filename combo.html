@@ -352,7 +352,7 @@ function handleStoreMarkerClick(marker) {
     infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br><br><b>Stations:</b><br>${inRangeStations.join('<br>')||'None'}<br><br><b>Billboards:</b><br>${inRangeBillboards.join('<br>')||'None'}`);
     infoWindow.open(map, marker);
 }
-function handleStationMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br>Genre: ${marker.customData.Genre || 'N/A'}`); infoWindow.open(map, marker); }
+function handleStationMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br>Genre: ${marker.customData.Genre || 'N/A'}<br><b>Station Rank:</b> ${loc.Rank || "N/A"}`); infoWindow.open(map, marker); }
 function handleBillboardMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>ON #${marker.customData.Name}</strong><br>Location: ${marker.customData.Info || 'N/A'}`); infoWindow.open(map, marker); }
 function highlightTableRow(storeName) {
     document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('highlight-row'));
