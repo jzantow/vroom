@@ -352,16 +352,15 @@ function handleStoreMarkerClick(marker) {
     infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br><br><b>Stations:</b><br>${inRangeStations.join('<br>')||'None'}<br><br><b>Billboards:</b><br>${inRangeBillboards.join('<br>')||'None'}`);
     infoWindow.open(map, marker);
 }
-function handleStationMarkerClick(marker) { 
-    /* Generic handler */ 
-    if(!mapInitialized) return; 
-    highlightMarker(marker); 
-    
-    // Correctly uses marker.customData to access the station's rank
-    infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br>Genre: ${marker.customData.Genre || 'N/A'}<br><b>Station Rank:</b> ${marker.customData.Rank || "N/A"}`); 
-    
-    infoWindow.open(map, marker); 
-}
+function handleStationMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br>Genre: ${marker.customData.Genre || 'N/A'}`); infoWindow.open(map, marker); }
+function handleBillboardMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>ON #${marker.customData.Name}</strong><br>Location: ${marker.customData.Info || 'N/A'}`); infoWindow.open(map, marker); }
+function highlightTableRow(storeName) {
+    document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('highlight-row'));
+    const row = document.querySelector(`tr[data-store-name="${storeName}"]`);
+    if (row) {
+        row.classList.add('highlight-row');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 function highlightMarker(marker) {
     if (!mapInitialized) return;
