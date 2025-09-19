@@ -231,22 +231,27 @@
             }
 
 // --- Click Listener for STATIONS ---
-            function addStationClickListener(marker, loc, infoWindow, map) {
-                marker.addListener("click", () => {
-                    highlightMarker(marker);
-                    
-                    // Create the content with a clickable link if the Coverage Map data exists
-                    let content = `<strong>${loc.Name}</strong><br>`;
-                    if (loc["Coverage Map"]) {
-                        content += `<b>Coverage Map:</b> <a href="${loc["Coverage Map"]}" target="_blank">View Map</a>`;
-                    } else {
-                        content += `<b>Coverage Map:</b> N/A`;
-                    }
+function addStationClickListener(marker, loc, infoWindow, map) {
+    marker.addListener("click", () => {
+        highlightMarker(marker);
+        
+        let content = `<strong>${loc.Name}</strong><br>`;
 
-                    infoWindow.setContent(content);
-                    infoWindow.open(map, marker);
-                });
-            }
+        content += `<b>Genre:</b> ${loc.Genre || "N/A"}<br>`;
+        content += `<b>Station Rank:</b> ${loc.Rank || "N/A"}<br>`;
+        
+        if (loc["Coverage Map"]) {
+            content += `<b>Coverage Map:</b> <a href="${loc["Coverage Map"]}" target="_blank">View Map</a><br>`;
+        } else {
+            content += `<b>Coverage Map:</b> N/A<br>`;
+        }
+        
+        content += `<b>Buy Region:</b> ${loc["Buy Region"] || "N/A"}`;
+
+        infoWindow.setContent(content);
+        infoWindow.open(map, marker);
+    });
+}
 
             // --- Click Listener for BILLBOARDS (from your file) ---
             function addBillboardClickListener(marker, loc, infoWindow, map) {
