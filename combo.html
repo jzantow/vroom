@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Combined Coverage Dashboard</title>
+    <title>pls work</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -198,11 +198,6 @@
             });
             infoWindow = new google.maps.InfoWindow();
         }
-
-        function loadData() {
-            const storeDataURL = 'https://jzantow.github.io/vroom/stores.json';
-            const stationDataURL = 'https://jzantow.github.io/vroom/stations.json';
-            const billboardDataURL = 'https://jzantow.github.io/vroom/hqbillboards.json';
 
             Promise.all([
                 fetch(storeDataURL).then(res => res.json()),
