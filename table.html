@@ -52,6 +52,62 @@
             list-style: none;
             padding-left: 0;
         }
+        /* Custom styles for the multi-select dropdown */
+        .dropdown-container {
+            position: relative;
+            width: 100%;
+        }
+        .dropdown-button {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            background-color: #fff;
+            font-size: 14px;
+            transition: all 0.2s ease-in-out;
+        }
+        .dropdown-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-top: 4px;
+            display: none;
+        }
+        .dropdown-list.open {
+            display: block;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .dropdown-item:hover {
+            background-color: #f0f4f8;
+        }
+        .dropdown-search {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-8 min-h-screen">
@@ -65,11 +121,20 @@
             <button id="newSearchBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out">New Search</button>
         </div>
         
-        <div class="mb-6 flex flex-col sm:flex-row items-center gap-2">
-            <label for="storeNameFilter" class="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Store:</label>
-            <select id="storeNameFilter" class="flex-grow w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Show All Stores</option>
-            </select>
+        <div class="mb-6">
+            <label for="storeNameFilter" class="block text-sm font-medium text-gray-700 mb-2">Filter by Store:</label>
+            <div class="dropdown-container">
+                <button id="storeDropdownButton" class="dropdown-button">
+                    <span id="storeDropdownLabel">Show All Stores</span>
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="storeDropdownList" class="dropdown-list">
+                    <input type="text" id="storeDropdownSearch" class="dropdown-search focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search stores...">
+                    <div id="storeCheckboxes">
+                        <!-- Checkboxes will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="overflow-x-auto rounded-lg shadow">
@@ -119,25 +184,73 @@
             });
 
             document.getElementById('searchInput').addEventListener('input', filterTable);
-            document.getElementById('storeNameFilter').addEventListener('change', filterTable);
             
             document.getElementById('newSearchBtn').addEventListener('click', () => {
                 document.getElementById('searchInput').value = '';
-                document.getElementById('storeNameFilter').value = '';
+                document.querySelectorAll('#storeCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+                updateDropdownLabel();
                 filterTable();
+            });
+            
+            const storeDropdownButton = document.getElementById('storeDropdownButton');
+            const storeDropdownList = document.getElementById('storeDropdownList');
+            const storeDropdownSearch = document.getElementById('storeDropdownSearch');
+
+            storeDropdownButton.addEventListener('click', () => {
+                storeDropdownList.classList.toggle('open');
+                if (storeDropdownList.classList.contains('open')) {
+                    storeDropdownSearch.focus();
+                }
+            });
+
+            storeDropdownSearch.addEventListener('input', (e) => {
+                const filter = e.target.value.toLowerCase();
+                document.querySelectorAll('#storeCheckboxes .dropdown-item').forEach(item => {
+                    const label = item.textContent.toLowerCase();
+                    if (label.includes(filter)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!storeDropdownList.contains(e.target) && !storeDropdownButton.contains(e.target)) {
+                    storeDropdownList.classList.remove('open');
+                }
             });
         });
 
         function generateStoreNameFilters() {
-            const selectElement = document.getElementById('storeNameFilter');
+            const container = document.getElementById('storeCheckboxes');
             const uniqueStoreNames = [...new Set(allStores.map(store => store.Name))].sort();
             
             uniqueStoreNames.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                selectElement.appendChild(option);
+                const div = document.createElement('div');
+                div.className = 'dropdown-item';
+                div.innerHTML = `
+                    <input type="checkbox" name="storeName" value="${name}" class="rounded text-blue-600 focus:ring-blue-500 mr-2" />
+                    <span>${name}</span>
+                `;
+                div.querySelector('input').addEventListener('change', () => {
+                    updateDropdownLabel();
+                    filterTable();
+                });
+                container.appendChild(div);
             });
+        }
+        
+        function updateDropdownLabel() {
+            const checkedBoxes = document.querySelectorAll('#storeCheckboxes input[type="checkbox"]:checked');
+            const label = document.getElementById('storeDropdownLabel');
+            if (checkedBoxes.length === 0) {
+                label.textContent = 'Show All Stores';
+            } else if (checkedBoxes.length === 1) {
+                label.textContent = checkedBoxes[0].value;
+            } else {
+                label.textContent = `${checkedBoxes.length} Stores Selected`;
+            }
         }
 
         function renderTable(stores) {
@@ -206,12 +319,12 @@
 
         function filterTable() {
             const query = document.getElementById('searchInput').value.toLowerCase();
-            const selectedStoreName = document.getElementById('storeNameFilter').value;
+            const checkedStoreNames = Array.from(document.querySelectorAll('#storeCheckboxes input[type="checkbox"]:checked')).map(cb => cb.value);
 
             let storesToDisplay = allStores;
 
-            if (selectedStoreName) {
-                storesToDisplay = allStores.filter(store => store.Name === selectedStoreName);
+            if (checkedStoreNames.length > 0) {
+                storesToDisplay = allStores.filter(store => checkedStoreNames.includes(store.Name));
             }
 
             const filteredStores = storesToDisplay.filter(store => {
