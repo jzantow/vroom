@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Combined Coverage Map & Table (Synced)</title>
+    <title>Combined Coverage Map & Table</title>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlgV94Xs1mTP01IZo3wqQWpx9png3l4DE&libraries=geometry" async defer></script>
     
@@ -17,14 +17,17 @@
             font-family: 'Inter', sans-serif;
             background-color: #f7fafc;
         }
+
         #map-container {
             position: relative;
             width: 100%;
             height: 600px; /* Defined height for the map so the table below is visible */
         }
+
         #map {
             height: 100%;
         }
+
         #controls {
             position: absolute;
             top: 10px;
@@ -39,6 +42,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             font-size: 14px;
         }
+
         #controls input[type="text"], #controls .control-btn {
             padding: 6px;
             font-size: 14px;
@@ -46,12 +50,14 @@
             border-radius: 4px;
             width: 250px;
         }
+        
         #controls .control-btn {
             background: white;
             cursor: pointer;
             user-select: none;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
+        
         #legend {
             position: absolute;
             bottom: 10px;
@@ -63,6 +69,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             border-radius: 5px;
         }
+
         .legend-color {
             display: inline-block; width: 15px; height: 15px;
             margin-right: 6px; vertical-align: middle; border-radius: 3px;
@@ -145,7 +152,8 @@
                 </button>
                 <div id="storeDropdownList" class="dropdown-list">
                     <input type="text" id="storeDropdownSearch" class="dropdown-search focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search stores...">
-                    <div id="storeCheckboxes"></div>
+                    <div id="storeCheckboxes">
+                        </div>
                 </div>
             </div>
         </div>
@@ -196,6 +204,7 @@
                 allStations = stationData;
                 allBillboards = billboardData;
                 
+                // Initialize both Map and Table components
                 initializeMap();
                 initializeTable();
                 setupEventListeners();
@@ -216,6 +225,7 @@
                 mapTypeControl: false,
                 scaleControl: true
             });
+
             createMarkers(allStores);
             createMarkers(allStations);
             createMarkers(allBillboards);
@@ -226,26 +236,30 @@
             locations.forEach(loc => {
                 const position = { lat: loc.Latitude, lng: loc.Longitude };
                 const color = COLORS[loc.Type] || "#000";
+
                 if (loc.Type === "Station" || loc.Type === "Billboard") {
                     const circle = new google.maps.Circle({
                         strokeColor: color, strokeOpacity: 0.8, strokeWeight: 2,
                         fillColor: color, fillOpacity: 0.25,
                         center: position,
-                        radius: (loc.Radius || 0) * 1609.34,
+                        radius: (loc.Radius || 0) * 1609.34, // Miles to meters
                         map: map, clickable: false
                     });
                     circles.push(circle);
                 }
+
                 const defaultIcon = {
                     path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color,
                     fillOpacity: 1, strokeWeight: 1, strokeColor: "#fff"
                 };
+
                 const marker = new google.maps.Marker({
                     position: position, map: map,
                     title: String(loc.Name), icon: defaultIcon
                 });
                 marker.defaultIcon = defaultIcon;
-                marker.locationData = loc;
+                marker.locationData = loc; // Attach full data object to marker
+
                 if (loc.Type === "Store") {
                     marker.addListener("click", () => handleStoreMarkerClick(marker));
                     storeMarkers.push(marker);
@@ -263,34 +277,47 @@
             highlightMarker(marker);
             const storeLatLng = marker.getPosition();
             const loc = marker.locationData;
-            const inRangeStations = allStations.filter(st => google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(st.Latitude, st.Longitude)) <= (st.Radius || 0) * 1609.34).map(st => st["Coverage Map"] ? `<a href="${st["Coverage Map"]}" target="_blank">${st.Name}</a>` : st.Name);
-            const inRangeBillboards = allBillboards.filter(bb => google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(bb.Latitude, bb.Longitude)) <= (bb.Radius || 0) * 1609.34).map(bb => bb.Creative ? `<a href="${bb.Creative}" target="_blank">ON #${bb.Name}</a>` : `ON #${bb.Name}`);
-            const content = `<strong>${loc.Name}</strong><br><br><b>Stations In Range:</b><br>${inRangeStations.length ? inRangeStations.join("<br>") : "None"}<br><br><b>Nearby Billboards:</b><br>${inRangeBillboards.length ? inRangeBillboards.join("<br>") : "None"}`;
+
+            const inRangeStations = allStations.filter(st => {
+                const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
+                return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
+            }).map(st => st["Coverage Map"] ? `<a href="${st["Coverage Map"]}" target="_blank">${st.Name}</a>` : st.Name);
+
+            const inRangeBillboards = allBillboards.filter(bb => {
+                const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
+                return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
+            }).map(bb => bb.Creative ? `<a href="${bb.Creative}" target="_blank">ON #${bb.Name}</a>` : `ON #${bb.Name}`);
+
+            const content = `<strong>${loc.Name}</strong><br><br>
+                <b>Stations In Range:</b><br>${inRangeStations.length ? inRangeStations.join("<br>") : "None"}<br><br>
+                <b>Nearby Billboards:</b><br>${inRangeBillboards.length ? inRangeBillboards.join("<br>") : "None"}`;
+            
             infoWindow.setContent(content);
             infoWindow.open(map, marker);
-            document.getElementById('searchInput').value = loc.Name;
-            filterTable();
         }
 
         function handleStationMarkerClick(marker) {
             highlightMarker(marker);
             const loc = marker.locationData;
-            let content = `<strong>${loc.Name}</strong><br><b>Genre:</b> ${loc.Genre || "N/A"}<br><b>Station Rank:</b> ${loc.Rank || "N/A"}<br><b>Coverage Map:</b> ${loc["Coverage Map"] ? `<a href="${loc["Coverage Map"]}" target="_blank">View Map</a>` : "N/A"}<br><b>Buy Region:</b> ${loc["Buy Region"] || "N/A"}`;
+            let content = `<strong>${loc.Name}</strong><br>
+                <b>Genre:</b> ${loc.Genre || "N/A"}<br>
+                <b>Station Rank:</b> ${loc.Rank || "N/A"}<br>
+                <b>Coverage Map:</b> ${loc["Coverage Map"] ? `<a href="${loc["Coverage Map"]}" target="_blank">View Map</a>` : "N/A"}<br>
+                <b>Buy Region:</b> ${loc["Buy Region"] || "N/A"}`;
             infoWindow.setContent(content);
             infoWindow.open(map, marker);
-            document.getElementById('searchInput').value = loc.Name;
-            filterTable();
         }
 
         function handleBillboardMarkerClick(marker) {
             highlightMarker(marker);
             const loc = marker.locationData;
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.Latitude},${loc.Longitude}`;
-            const content = `<strong>ON #${loc.Name}</strong><br><b>Lat, Lng:</b> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br><b>Location:</b> ${loc.Info || "N/A"}<br><b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}`;
+            const content = `<strong>ON #${loc.Name}</strong><br>
+                <b>Lat, Lng:</b> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br>
+                <b>Location:</b> ${loc.Info || "N/A"}<br>
+                <b>Creative:</b> ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View</a>` : "N/A"}`;
             infoWindow.setContent(content);
             infoWindow.open(map, marker);
-            document.getElementById('searchInput').value = `on #${loc.Name}`;
-            filterTable();
         }
 
         function highlightMarker(marker) {
@@ -308,9 +335,11 @@
             const showStores = document.getElementById('storesCheckbox').checked;
             const showStations = document.getElementById('stationsCheckbox').checked;
             const showBillboards = document.getElementById('billboardsCheckbox').checked;
+
             storeMarkers.forEach(marker => marker.setVisible(showStores));
             stationMarkers.forEach(marker => marker.setVisible(showStations));
             billboardMarkers.forEach(marker => marker.setVisible(showBillboards));
+            
             circles.forEach(circle => {
                 const isStation = (circle.fillColor === COLORS.Station);
                 const isBillboard = (circle.fillColor === COLORS.Billboard);
@@ -326,8 +355,6 @@
                 map.setCenter(match.getPosition());
                 map.setZoom(10);
                 google.maps.event.trigger(match, "click");
-                document.getElementById('searchInput').value = match.getTitle();
-                filterTable();
             } else {
                 alert(notFoundMessage);
             }
@@ -343,6 +370,7 @@
             const container = document.getElementById('storeCheckboxes');
             container.innerHTML = '';
             const uniqueStoreNames = [...new Set(allStores.map(store => store.Name))].sort();
+            
             uniqueStoreNames.forEach(name => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
@@ -367,12 +395,43 @@
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
             document.getElementById('noResultsMessage').classList.toggle('hidden', stores.length > 0);
+
             stores.forEach(store => {
                 const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
-                const inRangeStations = allStations.filter(st => google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(st.Latitude, st.Longitude)) <= (st.Radius || 0) * 1609.34);
-                const inRangeBillboards = allBillboards.filter(bb => google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(bb.Latitude, bb.Longitude)) <= (bb.Radius || 0) * 1609.34);
+
+                const inRangeStations = allStations.filter(st => {
+                    const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
+                });
+                
+                const inRangeBillboards = allBillboards.filter(bb => {
+                    const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
+                    return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
+                });
+
                 const row = document.createElement('tr');
-                row.innerHTML = `<td class="px-6 py-4 text-sm text-gray-900"><strong class="font-semibold">${store.Name || 'N/A'}</strong></td><td class="px-6 py-4 info-cell text-sm text-gray-500">${inRangeStations.length ? inRangeStations.map(st => `<div class="mb-4 last:mb-0"><strong>${st.Name||'N/A'}</strong><ul class="list-disc list-inside mt-1"><li><strong>Genre:</strong> ${st.Genre||'N/A'}</li>${st['Coverage Map']?`<li><strong>Map:</strong> <a href="${st['Coverage Map']}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a></li>`:''}</ul></div>`).join('<hr class="my-2 border-gray-200">'):'None'}</td><td class="px-6 py-4 info-cell text-sm text-gray-500">${inRangeBillboards.length ? inRangeBillboards.map(bb => `<div class="mb-4 last:mb-0"><strong class="font-semibold">ON #: ${bb.Name||'N/A'}</strong><ul class="list-disc list-inside mt-1"><li><strong>Location:</strong> ${bb.Info||'N/A'}</li>${bb.Creative?`<li><strong>Creative:</strong> <a href="${bb.Creative}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a></li>`:''}</ul></div>`).join('<hr class="my-2 border-gray-200">'):'None'}</td>`;
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-900"><strong class="font-semibold">${store.Name || 'N/A'}</strong></td>
+                    <td class="px-6 py-4 info-cell text-sm text-gray-500">
+                        ${inRangeStations.length ? inRangeStations.map(st => `
+                            <div class="mb-4 last:mb-0">
+                                <strong>${st.Name || 'N/A'}</strong>
+                                <ul class="list-disc list-inside mt-1">
+                                    <li><strong>Genre:</strong> ${st.Genre || 'N/A'}</li>
+                                    ${st['Coverage Map'] ? `<li><strong>Map:</strong> <a href="${st['Coverage Map']}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a></li>` : ''}
+                                </ul>
+                            </div>`).join('<hr class="my-2 border-gray-200">') : 'None'}
+                    </td>
+                    <td class="px-6 py-4 info-cell text-sm text-gray-500">
+                        ${inRangeBillboards.length ? inRangeBillboards.map(bb => `
+                            <div class="mb-4 last:mb-0">
+                                <strong class="font-semibold">ON #: ${bb.Name || 'N/A'}</strong>
+                                <ul class="list-disc list-inside mt-1">
+                                    <li><strong>Location:</strong> ${bb.Info || 'N/A'}</li>
+                                    ${bb.Creative ? `<li><strong>Creative:</strong> <a href="${bb.Creative}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a></li>` : ''}
+                                </ul>
+                            </div>`).join('<hr class="my-2 border-gray-200">') : 'None'}
+                    </td>`;
                 tableBody.appendChild(row);
             });
         }
@@ -380,48 +439,32 @@
         function filterTable() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const checkedStoreNames = Array.from(document.querySelectorAll('#storeCheckboxes input:checked')).map(cb => cb.value);
-            let storesToDisplay = (checkedStoreNames.length > 0) ? allStores.filter(store => checkedStoreNames.includes(store.Name)) : allStores;
+
+            let storesToDisplay = (checkedStoreNames.length > 0) 
+                ? allStores.filter(store => checkedStoreNames.includes(store.Name))
+                : allStores;
+
             const filteredStores = storesToDisplay.filter(store => {
                 if ((store.Name || '').toLowerCase().includes(query)) return true;
+                
                 const storeLatLng = new google.maps.LatLng(store.Latitude, store.Longitude);
                 const stationMatch = allStations.some(st => {
-                    const inRange = google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(st.Latitude, st.Longitude)) <= (st.Radius || 0) * 1609.34;
+                    const itemLatLng = new google.maps.LatLng(st.Latitude, st.Longitude);
+                    const inRange = google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
                     return inRange && (st.Name || '').toLowerCase().includes(query);
                 });
                 if (stationMatch) return true;
+
                 const billboardMatch = allBillboards.some(bb => {
-                    const inRange = google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, new google.maps.LatLng(bb.Latitude, bb.Longitude)) <= (bb.Radius || 0) * 1609.34;
+                    const itemLatLng = new google.maps.LatLng(bb.Latitude, bb.Longitude);
+                    const inRange = google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (bb.Radius || 0) * 1609.34;
                     return inRange && (`on #${bb.Name}` || '').toLowerCase().includes(query);
                 });
                 if (billboardMatch) return true;
+                
                 return false;
             });
             renderTable(filteredStores);
-            syncMapToTable(filteredStores); // Call the sync function
-        }
-        
-        // --- NEW SYNC FUNCTION ---
-        function syncMapToTable(filteredStores) {
-            const visibleStoreNames = new Set(filteredStores.map(s => s.Name));
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            storeMarkers.forEach(marker => marker.setVisible(visibleStoreNames.has(marker.getTitle())));
-            if (query) {
-                stationMarkers.forEach(marker => {
-                    if (marker.getTitle().toLowerCase().includes(query)) {
-                        marker.setVisible(true);
-                    }
-                });
-                billboardMarkers.forEach(marker => {
-                    const billboardName = `on #${marker.getTitle()}`.toLowerCase();
-                    if (billboardName.includes(query)) {
-                        marker.setVisible(true);
-                    }
-                });
-            } else {
-                // If query is empty, visibility is controlled by the main checkboxes
-                updateMarkersVisibility();
-            }
-            infoWindow.close();
         }
 
         // --- EVENT LISTENER SETUP ---
@@ -430,9 +473,16 @@
             document.getElementById('storesCheckbox').addEventListener('change', updateMarkersVisibility);
             document.getElementById('stationsCheckbox').addEventListener('change', updateMarkersVisibility);
             document.getElementById('billboardsCheckbox').addEventListener('change', updateMarkersVisibility);
-            document.getElementById("storeSearchBtn").addEventListener("click", () => performMapSearch(document.getElementById("storeSearchBox").value.trim().toLowerCase(), storeMarkers, "No matching store found."));
-            document.getElementById("stationSearchBtn").addEventListener("click", () => performMapSearch(document.getElementById("stationSearchBox").value.trim().toLowerCase(), stationMarkers, "No matching station found."));
-            document.getElementById("billboardSearchBtn").addEventListener("click", () => performMapSearch(document.getElementById("billboardSearchBox").value.trim().toLowerCase(), billboardMarkers, "No matching billboard found."));
+            
+            document.getElementById("storeSearchBtn").addEventListener("click", () => {
+                performMapSearch(document.getElementById("storeSearchBox").value.trim().toLowerCase(), storeMarkers, "No matching store found.");
+            });
+            document.getElementById("stationSearchBtn").addEventListener("click", () => {
+                performMapSearch(document.getElementById("stationSearchBox").value.trim().toLowerCase(), stationMarkers, "No matching station found.");
+            });
+            document.getElementById("billboardSearchBtn").addEventListener("click", () => {
+                performMapSearch(document.getElementById("billboardSearchBox").value.trim().toLowerCase(), billboardMarkers, "No matching billboard found.");
+            });
             document.getElementById("resetMapBtn").addEventListener("click", () => {
                 document.getElementById("storeSearchBox").value = "";
                 document.getElementById("stationSearchBox").value = "";
