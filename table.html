@@ -60,15 +60,25 @@
         <h1 class="text-3xl font-bold text-gray-900 mb-4 text-center">Combined Coverage Data</h1>
         <p class="text-gray-600 text-center mb-6">Search for stores, stations, or billboards by name or number.</p>
 
-        <input type="text" id="searchInput" placeholder="Search by Store Name, Store #, ON #, or Station Call Sign..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out mb-6">
+        <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
+            <input type="text" id="searchInput" placeholder="Search by Store Name, Store #, ON #, or Station Call Sign..." class="flex-grow w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+            <button id="newSearchBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out">New Search</button>
+        </div>
         
+        <div class="mb-6 flex flex-col sm:flex-row items-center gap-2">
+            <label for="storeNameFilter" class="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Store:</label>
+            <select id="storeNameFilter" class="flex-grow w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Show All Stores</option>
+            </select>
+        </div>
+
         <div class="overflow-x-auto rounded-lg shadow">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead>
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Store Information</th>
-                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Stations in Range</th>
-                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Billboards in Range</th>
+                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Radio Coverage</th>
+                        <th scope="col" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Nearby Billboards</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -98,18 +108,37 @@
                 allStores = storeLocations;
                 allStations = stationLocations;
                 allBillboards = billboardLocations;
-                renderTable(allStores);
+                
+                generateStoreNameFilters();
+                filterTable();
+
                 document.getElementById('loadingMessage').classList.add('hidden');
             }).catch(err => {
                 console.error("Failed to load location data:", err);
                 document.getElementById('loadingMessage').textContent = "Failed to load data. Please check file paths.";
             });
 
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                filterTable(query);
+            document.getElementById('searchInput').addEventListener('input', filterTable);
+            document.getElementById('storeNameFilter').addEventListener('change', filterTable);
+            
+            document.getElementById('newSearchBtn').addEventListener('click', () => {
+                document.getElementById('searchInput').value = '';
+                document.getElementById('storeNameFilter').value = '';
+                filterTable();
             });
         });
+
+        function generateStoreNameFilters() {
+            const selectElement = document.getElementById('storeNameFilter');
+            const uniqueStoreNames = [...new Set(allStores.map(store => store.Name))].sort();
+            
+            uniqueStoreNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                selectElement.appendChild(option);
+            });
+        }
 
         function renderTable(stores) {
             const tableBody = document.getElementById('tableBody');
@@ -146,6 +175,7 @@
                                 <ul class="list-disc list-inside mt-1">
                                     <li><strong>Genre:</strong> ${st.Genre || 'N/A'}</li>
                                     <li><strong>Station Rank:</strong> ${st.Rank || 'N/A'}</li>
+                                    <li><strong>Buy Region:</strong> ${st['Buy Region'] || 'N/A'}</li>
                                     ${st['Coverage Map'] ? `<li><strong>Coverage Map:</strong> <a href="${st['Coverage Map']}" target="_blank" class="text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out">View</a></li>` : ''}
                                 </ul>
                             </div>
@@ -174,9 +204,18 @@
             });
         }
 
-        function filterTable(query) {
-            const filteredStores = allStores.filter(store => {
-                const storeInfo = (store.Name || '').toLowerCase() + (store.Info || '').toLowerCase();
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const selectedStoreName = document.getElementById('storeNameFilter').value;
+
+            let storesToDisplay = allStores;
+
+            if (selectedStoreName) {
+                storesToDisplay = allStores.filter(store => store.Name === selectedStoreName);
+            }
+
+            const filteredStores = storesToDisplay.filter(store => {
+                const storeInfo = (store.Name || '').toLowerCase();
                 if (storeInfo.includes(query)) return true;
 
                 const inRangeStations = allStations.filter(st => {
@@ -185,7 +224,7 @@
                     return google.maps.geometry.spherical.computeDistanceBetween(storeLatLng, itemLatLng) <= (st.Radius || 0) * 1609.34;
                 });
 
-                const stationMatch = inRangeStations.some(st => (st.Name || '').toLowerCase().includes(query) || (st.Genre || '').toLowerCase().includes(query) || (st.Rank || '').toLowerCase().includes(query));
+                const stationMatch = inRangeStations.some(st => (st.Name || '').toLowerCase().includes(query) || (st.Genre || '').toLowerCase().includes(query) || (st.Rank || '').toLowerCase().includes(query) || (st['Buy Region'] || '').toLowerCase().includes(query));
                 if (stationMatch) return true;
 
                 const inRangeBillboards = allBillboards.filter(bb => {
