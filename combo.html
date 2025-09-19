@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beep Beep</title>
+    <title>Combined Coverage Dashboard</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -153,6 +153,11 @@
 
     <script>
         // --- GLOBAL VARIABLES ---
+        const storeDataURL = 'https://jzantow.github.io/vroom/stores.json';
+        const stationDataURL = 'https://jzantow.github.io/vroom/stations.json';
+        const billboardDataURL = 'https://jzantow.github.io/vroom/hqbillboards.json';
+
+        let allStores = [], allStations = [], allBillboards = [];
         let map;
         const storeMarkers = [], stationMarkers = [], billboardMarkers = [];
         let circles = [];
