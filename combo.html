@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Coverage Dashboard</title>
+    <title>Interactive Coverage Dashboard 2.0</title>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlgV94Xs1mTP01IZo3wqQWpx9png3l4DE&libraries=geometry" async defer></script>
     
@@ -150,32 +150,21 @@
 
 <script>
 // --- FALLBACK SCRIPT ---
-// Creates a minimal google.maps object if the main API script fails, preventing script crashes.
 window.google = window.google || {};
 window.google.maps = window.google.maps || {};
 window.google.maps.geometry = window.google.maps.geometry || {};
 window.google.maps.geometry.spherical = window.google.maps.geometry.spherical || {};
-window.google.maps.LatLng = window.google.maps.LatLng || function(lat, lng) {
-    this.lat = () => lat;
-    this.lng = () => lng;
-};
-window.google.maps.geometry.spherical.computeDistanceBetween = window.google.maps.geometry.spherical.computeDistanceBetween || function(from, to) {
-    console.warn("Using fallback distance calculation. Map features are disabled.");
-    const R = 6371e3; const lat1 = from.lat() * Math.PI / 180; const lat2 = to.lat() * Math.PI / 180;
-    const deltaLat = (to.lat() - from.lat()) * Math.PI / 180;
-    const deltaLon = (to.lng() - from.lng()) * Math.PI / 180;
-    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; // Distance in meters
-};
+window.google.maps.LatLng = window.google.maps.LatLng || function(lat, lng) { this.lat = () => lat; this.lng = () => lng; };
+window.google.maps.geometry.spherical.computeDistanceBetween = window.google.maps.geometry.spherical.computeDistanceBetween || function(from, to) { console.warn("Using fallback distance calculation. Map features are disabled."); const R = 6371e3; const lat1 = from.lat() * Math.PI / 180; const lat2 = to.lat() * Math.PI / 180; const dLat = (to.lat() - from.lat()) * Math.PI / 180; const dLon = (to.lng() - from.lng()) * Math.PI / 180; const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) * Math.sin(dLon/2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c; };
 
 // --- GLOBAL VARIABLES ---
 let map, infoWindow;
 let allStores = [], allStations = [], allBillboards = [];
 const storeMarkers = [], stationMarkers = [], billboardMarkers = [];
 let circles = [], highlightedMarker = null;
-let mapInitialized = false; // <-- IMPORTANT FLAG FOR FALLBACK
+let mapInitialized = false; 
 const COLORS = { "Store": "#FF6347", "Station": "#1E90FF", "Billboard": "#32CD32" };
+const GOLD_MARKER = { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#FFD700", fillOpacity: 1, strokeWeight: 2, strokeColor: "#B8860B" };
 
 // --- INITIALIZATION ---
 window.onload = function() {
@@ -183,7 +172,7 @@ window.onload = function() {
         initMap();
         mapInitialized = true;
     } catch (error) {
-        console.error("Google Maps API failed to load. Map functionality will be disabled.", error);
+        console.error("Google Maps API failed to load.", error);
         displayMapError();
     }
     loadData();
@@ -191,20 +180,13 @@ window.onload = function() {
 };
 
 function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 5, center: { lat: 42.53, lng: -114.36 },
-        gestureHandling: "greedy", mapTypeControl: false, scaleControl: true
-    });
+    map = new google.maps.Map(document.getElementById("map"), { zoom: 5, center: { lat: 42.53, lng: -114.36 }, gestureHandling: "greedy", mapTypeControl: false, scaleControl: true });
     infoWindow = new google.maps.InfoWindow();
-    document.getElementById('legend').innerHTML = `<h3>Legend</h3>
-        <p><span class="legend-color store"></span> Store</p>
-        <p><span class="legend-color station"></span> Station</p>
-        <p><span class="legend-color billboard"></span> Billboard</p>`;
+    document.getElementById('legend').innerHTML = `<h3>Legend</h3><p><span class="legend-color store"></span> Store</p><p><span class="legend-color station"></span> Station</p><p><span class="legend-color billboard"></span> Billboard</p>`;
 }
 
 function displayMapError() {
-    document.getElementById('map').innerHTML = `<div style="padding: 20px; text-align: center; color: #555; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-        <h2>Map Failed to Load</h2><p>Please check your API key and internet connection. Table functionality is still available.</p></div>`;
+    document.getElementById('map').innerHTML = `<div style="padding: 20px; text-align: center; color: #555; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;"><h2>Map Failed to Load</h2><p>Please check your API key and internet connection. Table functionality is still available.</p></div>`;
     document.getElementById('legend').style.display = 'none';
 }
 
@@ -220,11 +202,9 @@ function loadData() {
         allStores = storeData;
         allStations = stationData;
         allBillboards = billboardData;
-        
         if (mapInitialized) createAllMarkers();
         generateStoreNameFilters();
         renderTable(allStores);
-        
         document.getElementById('loadingMessage').classList.add('hidden');
     }).catch(err => {
         console.error("Data fetch failed:", err);
@@ -234,33 +214,39 @@ function loadData() {
 
 // --- CORE FILTERING & RENDERING ---
 function masterFilter() {
-    const query = document.getElementById('masterSearchInput').value.toLowerCase();
+    const query = document.getElementById('masterSearchInput').value.trim().toLowerCase();
     const checkedStoreNames = Array.from(document.querySelectorAll('#storeCheckboxes input:checked')).map(cb => cb.value);
-
-    let storesToDisplay = (checkedStoreNames.length > 0) 
-        ? allStores.filter(store => checkedStoreNames.includes(store.Name))
-        : allStores;
-
+    let singleStoreToHighlight = null;
     if (query) {
-        storesToDisplay = storesToDisplay.filter(store => {
-            if ((store.Name || '').toLowerCase().includes(query)) return true;
-            const inRangeStations = findInRangeItems(store, allStations);
-            if (inRangeStations.some(st => (st.Name || '').toLowerCase().includes(query))) return true;
-            const inRangeBillboards = findInRangeItems(store, allBillboards);
-            if (inRangeBillboards.some(bb => (`on #${bb.Name}` || '').toLowerCase().includes(query))) return true;
-            return false;
-        });
+        const potentialMatches = allStores.filter(store => store.Name.toLowerCase().includes(query));
+        if (potentialMatches.length === 1) { singleStoreToHighlight = potentialMatches[0].Name; }
     }
-
-    renderTable(storesToDisplay);
-    if (mapInitialized) updateVisibleMarkers(storesToDisplay);
+    if (!singleStoreToHighlight && checkedStoreNames.length === 1) { singleStoreToHighlight = checkedStoreNames[0]; }
+    if (singleStoreToHighlight) {
+        renderTable(allStores); 
+        if (mapInitialized) { updateVisibleMarkers(allStores); }
+        handleTableRowClick(singleStoreToHighlight);
+    } else {
+        let storesToDisplay = (checkedStoreNames.length > 0) ? allStores.filter(store => checkedStoreNames.includes(store.Name)) : allStores;
+        if (query) {
+            storesToDisplay = storesToDisplay.filter(store => {
+                if ((store.Name || '').toLowerCase().includes(query)) return true;
+                const inRangeStations = findInRangeItems(store, allStations);
+                if (inRangeStations.some(st => (st.Name || '').toLowerCase().includes(query))) return true;
+                const inRangeBillboards = findInRangeItems(store, allBillboards);
+                if (inRangeBillboards.some(bb => (`on #${bb.Name}` || '').toLowerCase().includes(query))) return true;
+                return false;
+            });
+        }
+        renderTable(storesToDisplay);
+        if (mapInitialized) { updateVisibleMarkers(storesToDisplay); }
+    }
 }
 
 function renderTable(stores) {
     const tableBody = document.getElementById('tableBody');
     tableBody.innerHTML = '';
     document.getElementById('noResultsMessage').classList.toggle('hidden', stores.length > 0);
-
     stores.forEach(store => {
         const inRangeStations = findInRangeItems(store, allStations);
         const inRangeBillboards = findInRangeItems(store, allBillboards);
@@ -268,10 +254,7 @@ function renderTable(stores) {
         row.setAttribute('data-store-name', store.Name);
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => handleTableRowClick(store.Name));
-
-        row.innerHTML = `<td class="font-semibold">${store.Name || 'N/A'}</td>
-            <td>${inRangeStations.length ? inRangeStations.map(st => `<div><strong>${st.Name}</strong> (${st.Genre || 'N/A'})</div>`).join('') : 'None'}</td>
-            <td>${inRangeBillboards.length ? inRangeBillboards.map(bb => `<div><strong>ON #${bb.Name}</strong></div>`).join('') : 'None'}</td>`;
+        row.innerHTML = `<td class="font-semibold">${store.Name || 'N/A'}</td><td>${inRangeStations.length ? inRangeStations.map(st => `<div><strong>${st.Name}</strong> (${st.Genre || 'N/A'})</div>`).join('') : 'None'}</td><td>${inRangeBillboards.length ? inRangeBillboards.map(bb => `<div><strong>ON #${bb.Name}</strong></div>`).join('') : 'None'}</td>`;
         tableBody.appendChild(row);
     });
 }
@@ -279,9 +262,7 @@ function renderTable(stores) {
 function updateVisibleMarkers(storesToShow) {
     if (!mapInitialized) return;
     const storeNamesToShow = new Set(storesToShow.map(s => s.Name));
-    storeMarkers.forEach(marker => {
-        marker.setVisible(storeNamesToShow.has(marker.customData.Name));
-    });
+    storeMarkers.forEach(marker => { marker.setVisible(storeNamesToShow.has(marker.customData.Name)); });
 }
 
 // --- MAP-SPECIFIC FUNCTIONS ---
@@ -291,31 +272,15 @@ function createAllMarkers() {
     allData.forEach(loc => {
         const position = { lat: loc.Latitude, lng: loc.Longitude };
         const color = COLORS[loc.Type];
-
-        // --- ADD THIS BLOCK ---
-        // This code creates the radius circles for stations and billboards
         if (loc.Type === "Station" || loc.Type === "Billboard") {
-            const circle = new google.maps.Circle({
-                strokeColor: color,
-                strokeOpacity: 0.7,
-                strokeWeight: 1.5,
-                fillColor: color,
-                fillOpacity: 0.2,
-                map: map,
-                center: position,
-                radius: (loc.Radius || 0) * 1609.34, // Convert miles to meters
-            });
-            // Give the circle a type so we can toggle it with the checkbox
+            const circle = new google.maps.Circle({ strokeColor: color, strokeOpacity: 0.7, strokeWeight: 1.5, fillColor: color, fillOpacity: 0.2, map: map, center: position, radius: (loc.Radius || 0) * 1609.34, });
             circle.customType = loc.Type; 
             circles.push(circle);
         }
-        // --- END OF ADDED BLOCK ---
-
         const defaultIcon = { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 1, strokeWeight: 1, strokeColor: "#fff" };
         const marker = new google.maps.Marker({ position, map, icon: defaultIcon, title: String(loc.Name) });
         marker.customData = loc;
         marker.defaultIcon = defaultIcon;
-
         if (loc.Type === "Store") {
             marker.addListener("click", () => handleStoreMarkerClick(marker));
             storeMarkers.push(marker);
@@ -334,7 +299,6 @@ function handleTableRowClick(storeName) {
     document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('highlight-row'));
     const row = document.querySelector(`tr[data-store-name="${storeName}"]`);
     if (row) row.classList.add('highlight-row');
-    
     if (!mapInitialized) return;
     const marker = storeMarkers.find(m => m.customData.Name === storeName);
     if (marker) {
@@ -346,14 +310,53 @@ function handleTableRowClick(storeName) {
 function handleStoreMarkerClick(marker) {
     if (!mapInitialized) return;
     highlightMarker(marker);
-    highlightTableRow(marker.customData.Name); // Link back to table
+    highlightTableRow(marker.customData.Name);
     const inRangeStations = findInRangeItems(marker.customData, allStations).map(st => st["Coverage Map"] ? `<a href="${st["Coverage Map"]}" target="_blank">${st.Name}</a>` : st.Name);
     const inRangeBillboards = findInRangeItems(marker.customData, allBillboards).map(bb => bb.Creative ? `<a href="${bb.Creative}" target="_blank">ON #${bb.Name}</a>` : `ON #${bb.Name}`);
     infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br><br><b>Stations:</b><br>${inRangeStations.join('<br>')||'None'}<br><br><b>Billboards:</b><br>${inRangeBillboards.join('<br>')||'None'}`);
     infoWindow.open(map, marker);
 }
-function handleStationMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>${marker.customData.Name}</strong><br>Genre: ${marker.customData.Genre || 'N/A'}`); infoWindow.open(map, marker); }
-function handleBillboardMarkerClick(marker) { /* Generic handler */ if(!mapInitialized)return; highlightMarker(marker); infoWindow.setContent(`<strong>ON #${marker.customData.Name}</strong><br>Location: ${marker.customData.Info || 'N/A'}`); infoWindow.open(map, marker); }
+
+function handleStationMarkerClick(marker) {
+    if (!mapInitialized) return;
+    highlightMarker(marker);
+    const loc = marker.customData;
+    let content = `
+        <div style="font-size: 14px; max-width: 250px;">
+            <strong style="font-size: 16px;">${loc.Name}</strong><br><br>
+            <strong>Genre:</strong> ${loc.Genre || "N/A"}<br>
+            <strong>Station Rank:</strong> ${loc.Rank || "N/A"}<br>
+            <strong>Coverage Map:</strong> 
+            ${loc["Coverage Map"] ? `<a href="${loc["Coverage Map"]}" target="_blank">View Map</a>` : "N/A"}
+        </div>
+    `;
+    infoWindow.setContent(content);
+    infoWindow.open(map, marker);
+}
+
+function handleBillboardMarkerClick(marker) {
+    if (!mapInitialized) return;
+    highlightMarker(marker);
+    const loc = marker.customData;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=$?q=${loc.Latitude},${loc.Longitude}`;
+    let content = `
+        <div style="font-size: 14px; max-width: 300px; max-height: 250px; overflow-y: auto;">
+            <strong style="font-size: 16px;">ON #${loc.Name}</strong><br><br>
+            <strong>Lat, Lng:</strong> <a href="${mapsUrl}" target="_blank">${loc.Latitude}, ${loc.Longitude}</a><br>
+            <strong>Board Type:</strong> ${loc["Board Type"] || "N/A"}<br>
+            <strong>Location:</strong> ${loc.Info || "N/A"}<br>
+            <strong>Live Dates:</strong><br><div style="padding-left: 10px;">${(loc["Live Dates"] || "N/A").replace(/\n/g, "<br>")}</div>
+            <strong>Buyer:</strong> ${loc["Buyer"] || "N/A"}<br>
+            <strong>Associated Store(s):</strong> ${loc["Associated Store(s)"] || "N/A"}<br>
+            <strong>Directional:</strong> ${loc["Directional"] || "N/A"}<br>
+            <strong>Creative:</strong> 
+            ${loc.Creative ? `<a href="${loc.Creative}" target="_blank">View Creative</a>` : "N/A"}
+        </div>
+    `;
+    infoWindow.setContent(content);
+    infoWindow.open(map, marker);
+}
+
 function highlightTableRow(storeName) {
     document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('highlight-row'));
     const row = document.querySelector(`tr[data-store-name="${storeName}"]`);
@@ -364,8 +367,10 @@ function highlightTableRow(storeName) {
 }
 function highlightMarker(marker) {
     if (!mapInitialized) return;
-    if (highlightedMarker) highlightedMarker.setIcon(highlightedMarker.defaultIcon);
-    marker.setIcon({ path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#FFD700", fillOpacity: 1, strokeWeight: 2, strokeColor: "#B8860B" });
+    if (highlightedMarker) {
+        highlightedMarker.setIcon(highlightedMarker.defaultIcon);
+    }
+    marker.setIcon(GOLD_MARKER);
     highlightedMarker = marker;
 }
 function findInRangeItems(sourceItem, targetItems) {
@@ -376,63 +381,43 @@ function findInRangeItems(sourceItem, targetItems) {
     });
 }
 
-// --- TABLE-SPECIFIC UI FUNCTIONS ---
-function generateStoreNameFilters() { /* unchanged */ }
-function updateDropdownLabel() { /* unchanged */ }
-
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
     document.getElementById('masterSearchInput').addEventListener('input', masterFilter);
-
-    document.getElementById('storesCheckbox').addEventListener('change', () => { 
-        if(mapInitialized) {
-            const isVisible = document.getElementById('storesCheckbox').checked;
-            storeMarkers.forEach(m => m.setVisible(isVisible));
-        }
-    });
-    
+    document.getElementById('storesCheckbox').addEventListener('change', () => { if(mapInitialized) storeMarkers.forEach(m => m.setVisible(document.getElementById('storesCheckbox').checked)); });
     document.getElementById('stationsCheckbox').addEventListener('change', () => { 
         if(mapInitialized) {
             const isVisible = document.getElementById('stationsCheckbox').checked;
             stationMarkers.forEach(m => m.setVisible(isVisible));
-            // Add this line to toggle circles
             circles.forEach(c => { if (c.customType === 'Station') c.setVisible(isVisible); }); 
         }
     });
-    
     document.getElementById('billboardsCheckbox').addEventListener('change', () => { 
         if(mapInitialized) {
             const isVisible = document.getElementById('billboardsCheckbox').checked;
             billboardMarkers.forEach(m => m.setVisible(isVisible));
-            // Add this line to toggle circles
             circles.forEach(c => { if (c.customType === 'Billboard') c.setVisible(isVisible); }); 
         }
     });
-    
     document.getElementById('resetBtn').addEventListener('click', () => {
         document.getElementById('masterSearchInput').value = '';
         document.querySelectorAll('#storeCheckboxes input').forEach(cb => cb.checked = false);
         updateDropdownLabel();
+        if (highlightedMarker) {
+            highlightedMarker.setIcon(highlightedMarker.defaultIcon);
+            highlightedMarker = null;
+        }
         masterFilter();
         if (mapInitialized) {
             map.panTo({ lat: 42.53, lng: -114.36 });
             map.setZoom(5);
             infoWindow.close();
-            if(highlightedMarker) highlightedMarker.setIcon(highlightedMarker.defaultIcon);
-            highlightedMarker = null;
         }
     });
-    
-    // Dropdown listeners
     const dropdownBtn = document.getElementById('storeDropdownButton');
     const dropdownList = document.getElementById('storeDropdownList');
     dropdownBtn.addEventListener('click', () => dropdownList.classList.toggle('open'));
-    document.getElementById('storeDropdownSearch').addEventListener('input', e => {
-        const filter = e.target.value.toLowerCase();
-        document.querySelectorAll('#storeCheckboxes .dropdown-item').forEach(item => {
-            item.style.display = item.textContent.toLowerCase().includes(filter) ? 'flex' : 'none';
-        });
-    });
+    document.getElementById('storeDropdownSearch').addEventListener('input', e => { const filter = e.target.value.toLowerCase(); document.querySelectorAll('#storeCheckboxes .dropdown-item').forEach(item => { item.style.display = item.textContent.toLowerCase().includes(filter) ? 'flex' : 'none'; }); });
     document.addEventListener('click', e => { if (!dropdownList.contains(e.target) && !dropdownBtn.contains(e.target)) dropdownList.classList.remove('open'); });
 }
 
@@ -446,9 +431,9 @@ function generateStoreNameFilters() {
         div.querySelector('input').addEventListener('change', masterFilter);
         container.appendChild(div);
     });
-    // Add master listener to update label after any checkbox change
     container.addEventListener('change', updateDropdownLabel);
 }
+
 function updateDropdownLabel() {
     const checked = document.querySelectorAll('#storeCheckboxes input:checked');
     const label = document.getElementById('storeDropdownLabel');
