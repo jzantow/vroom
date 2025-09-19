@@ -364,9 +364,29 @@ function updateDropdownLabel() { /* unchanged */ }
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
     document.getElementById('masterSearchInput').addEventListener('input', masterFilter);
-    document.getElementById('storesCheckbox').addEventListener('change', () => { if(mapInitialized) storeMarkers.forEach(m => m.setVisible(document.getElementById('storesCheckbox').checked)); });
-    document.getElementById('stationsCheckbox').addEventListener('change', () => { if(mapInitialized) stationMarkers.forEach(m => m.setVisible(document.getElementById('stationsCheckbox').checked)); });
-    document.getElementById('billboardsCheckbox').addEventListener('change', () => { if(mapInitialized) billboardMarkers.forEach(m => m.setVisible(document.getElementById('billboardsCheckbox').checked)); });
+    
+    // Checkbox listeners updated to also toggle circles
+    document.getElementById('storesCheckbox').addEventListener('change', () => { 
+        if(mapInitialized) {
+            const isVisible = document.getElementById('storesCheckbox').checked;
+            storeMarkers.forEach(m => m.setVisible(isVisible));
+        }
+    });
+    document.getElementById('stationsCheckbox').addEventListener('change', () => { 
+        if(mapInitialized) {
+            const isVisible = document.getElementById('stationsCheckbox').checked;
+            stationMarkers.forEach(m => m.setVisible(isVisible));
+            circles.forEach(c => { if (c.customType === 'Station') c.setVisible(isVisible); }); // Added this line
+        }
+    });
+    document.getElementById('billboardsCheckbox').addEventListener('change', () => { 
+        if(mapInitialized) {
+            const isVisible = document.getElementById('billboardsCheckbox').checked;
+            billboardMarkers.forEach(m => m.setVisible(isVisible));
+            circles.forEach(c => { if (c.customType === 'Billboard') c.setVisible(isVisible); }); // Added this line
+        }
+    });
+
     document.getElementById('resetBtn').addEventListener('click', () => {
         document.getElementById('masterSearchInput').value = '';
         document.querySelectorAll('#storeCheckboxes input').forEach(cb => cb.checked = false);
@@ -380,7 +400,8 @@ function setupEventListeners() {
             highlightedMarker = null;
         }
     });
-    // Dropdown listeners
+
+    // Dropdown listeners (no changes here)
     const dropdownBtn = document.getElementById('storeDropdownButton');
     const dropdownList = document.getElementById('storeDropdownList');
     dropdownBtn.addEventListener('click', () => dropdownList.classList.toggle('open'));
